@@ -169,6 +169,44 @@ def fid_function(real_image_batch, generated_image_batch):
     )
 
 
+def deconv_block(size, is_last_layer=False):
+    block = [
+        Conv2DTranspose(
+            size,
+            4,
+            2,
+            "SAME",
+            use_bias=False,
+            activation="tanh" if is_last_layer else None,
+            kernel_initializer=tf.random_normal_initializer(stddev=0.02),
+        )
+    ]
+
+    if not is_last_layer:
+        block += [LeakyReLU(alpha=0.2), BatchNormalization()]
+
+    return block
+
+
+def conv_block(size, is_first_layer=False):
+    block = [
+        Conv2D(
+            size,
+            4,
+            2,
+            "SAME",
+            use_bias=False,
+            kernel_initializer=tf.random_normal_initializer(stddev=0.02),
+        ),
+        LeakyReLU(alpha=0.2),
+    ]
+
+    if not is_first_layer:
+        block += [BatchNormalization()]
+
+    return block
+
+
 class Generator_Model(tf.keras.Model):
     def __init__(self):
         """
@@ -179,47 +217,13 @@ class Generator_Model(tf.keras.Model):
 
         layers = [
             # Project and reshape (Input is bsz * z-dim)
-            Dense(4 * 4 * 512, activation="relu"),
+            Dense(4 * 4 * 512, activation="relu", use_bias=False),
             Reshape([4, 4, 512]),
             # First Deconv to 8x8x512, filters 4, stride 2
-            Conv2DTranspose(
-                256,
-                4,
-                2,
-                "SAME",
-                activation="relu",
-                kernel_initializer=tf.random_normal_initializer(stddev=0.02),
-            ),
-            BatchNormalization(),
-            # => 16x16x256
-            Conv2DTranspose(
-                128,
-                4,
-                2,
-                "SAME",
-                activation="relu",
-                kernel_initializer=tf.random_normal_initializer(stddev=0.02),
-            ),
-            BatchNormalization(),
-            # => 32x32x128
-            Conv2DTranspose(
-                64,
-                4,
-                2,
-                "SAME",
-                activation="relu",
-                kernel_initializer=tf.random_normal_initializer(stddev=0.02),
-            ),
-            BatchNormalization(),
-            # => 64x64x3
-            Conv2DTranspose(
-                3,
-                4,
-                2,
-                "SAME",
-                activation="tanh",
-                kernel_initializer=tf.random_normal_initializer(stddev=0.02),
-            ),
+            *deconv_block(256),
+            *deconv_block(128),
+            *deconv_block(64),
+            *deconv_block(3, is_last_layer=True),
         ]
 
         self.net = Sequential(layers)
@@ -247,7 +251,7 @@ class Generator_Model(tf.keras.Model):
         """
         # TODO: Calculate the loss
         return tf.reduce_mean(
-            tf.keras.losses.binary_crossentropy(
+            tf.keras.losses.BinaryCrossentropy(
                 tf.ones_like(disc_fake_output), disc_fake_output
             )
         )
@@ -262,44 +266,10 @@ class Discriminator_Model(tf.keras.Model):
         # TODO: Define the model, loss, and optimizer
         layers = [
             # Input is bszx64x64x3 => 32x32x128
-            Conv2D(
-                64,
-                4,
-                2,
-                "SAME",
-                kernel_initializer=tf.random_normal_initializer(stddev=0.02),
-            ),
-            LeakyReLU(alpha=0.2),
-            # => 16x16x256
-            Conv2D(
-                128,
-                4,
-                2,
-                "SAME",
-                kernel_initializer=tf.random_normal_initializer(stddev=0.02),
-            ),
-            LeakyReLU(alpha=0.2),
-            BatchNormalization(),
-            # => 8x8x512
-            Conv2D(
-                256,
-                4,
-                2,
-                "SAME",
-                kernel_initializer=tf.random_normal_initializer(stddev=0.02),
-            ),
-            LeakyReLU(alpha=0.2),
-            BatchNormalization(),
-            # => 4x4x1024
-            Conv2D(
-                512,
-                4,
-                2,
-                "SAME",
-                kernel_initializer=tf.random_normal_initializer(stddev=0.02),
-            ),
-            LeakyReLU(alpha=0.2),
-            BatchNormalization(),
+            *conv_block(64, is_first_layer=True),
+            *conv_block(128),
+            *conv_block(256),
+            *conv_block(512),
             Flatten(),
             Dense(1, activation="sigmoid"),
         ]
@@ -329,13 +299,13 @@ class Discriminator_Model(tf.keras.Model):
         """
         # TODO: Calculate the loss
         loss = tf.reduce_mean(
-            tf.keras.losses.binary_crossentropy(
+            tf.keras.losses.BinaryCrossentropy(
                 tf.zeros_like(disc_fake_output), disc_fake_output
             )
         )
         loss += tf.reduce_mean(
-            tf.keras.losses.binary_crossentropy(
-                tf.ones_like(disc_fake_output), disc_real_output
+            tf.keras.losses.BinaryCrossentropy(
+                tf.ones_like(disc_real_output), disc_real_output
             )
         )
 
@@ -343,21 +313,6 @@ class Discriminator_Model(tf.keras.Model):
 
 
 ## --------------------------------------------------------------------------------------
-
-
-def optimize(
-    tape: tf.GradientTape, model: tf.keras.Model, loss: tf.Tensor, optimizer
-) -> None:
-    """ This optimizes a model with respect to its loss
-  
-  Inputs:
-  - tape: the Gradient Tape
-  - model: the model to be trained
-  - loss: the model's loss
-  """
-    # TODO: calculate the gradients our input model and apply them
-    gradients = tape.gradient(loss, model.trainable_variables)
-    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 
 def gen_noise():
@@ -381,6 +336,14 @@ def train(generator, discriminator, dataset_iterator, manager):
     total_fid = 0
     total_fid_n = 0
 
+    g_optimizer = tf.keras.optimizers.Adam(
+        learning_rate=args.learn_rate, beta_1=args.beta1
+    )
+
+    d_optimizer = tf.keras.optimizers.Adam(
+        learning_rate=args.learn_rate, beta_1=args.beta1
+    )
+
     # Loop over our data until we run out
     for iteration, batch in enumerate(pbar):
         # TODO: Train the model
@@ -398,20 +361,14 @@ def train(generator, discriminator, dataset_iterator, manager):
             if iteration % args.num_gen_updates == 0:
                 d_loss = discriminator.loss_function(fake_output, real_output)
 
-        pbar.set_description(
-            " g_loss: {:1.3f}, d_lsoss: {:1.3f}".format(g_loss, d_loss)
-        )
-
-        optimizer = tf.keras.optimizers.Adam(
-            learning_rate=args.learn_rate, beta_1=args.beta1
-        )
+        pbar.set_description("g_loss: {:1.3f}, d_loss: {:1.3f}".format(g_loss, d_loss))
 
         g_gradients = gtape.gradient(g_loss, generator.trainable_variables)
-        optimizer.apply_gradients(zip(g_gradients, generator.trainable_variables))
+        g_optimizer.apply_gradients(zip(g_gradients, generator.trainable_variables))
 
         if iteration % args.num_gen_updates == 0:
             d_gradients = dtape.gradient(d_loss, discriminator.trainable_variables)
-            optimizer.apply_gradients(
+            d_optimizer.apply_gradients(
                 zip(d_gradients, discriminator.trainable_variables)
             )
 
