@@ -27,8 +27,6 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 gpu_available = tf.test.is_gpu_available()
 print("GPU Available: ", gpu_available)
 
-np.random.seed(0)
-tf.random.set_seed(0)
 
 ## --------------------------------------------------------------------------------------
 
