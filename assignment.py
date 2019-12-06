@@ -363,7 +363,7 @@ def optimize(
 
 
 def gen_noise():
-    return tf.random.normal([args.batch_size, args.z_dim], minval=1, maxval=1)
+    return tf.random.normal([args.batch_size, args.z_dim])
 
 
 # Train the model for one epoch.
