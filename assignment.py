@@ -363,7 +363,7 @@ def optimize(
 
 
 def gen_noise():
-    return tf.random.uniform([args.batch_size, args.z_dim], minval=1, maxval=1)
+    return tf.random.normal([args.batch_size, args.z_dim], minval=1, maxval=1)
 
 
 # Train the model for one epoch.
@@ -442,7 +442,7 @@ def test(generator):
     :return: None
     """
     # TODO: Replace 'None' with code to sample a batch of random images
-    img = generator(gen_noise())
+    img = np.array(generator(gen_noise()))
 
     ### Below, we've already provided code to save these generated images to files on disk
     # Rescale the image from (-1, 1) to (0, 255)
@@ -480,7 +480,7 @@ def main():
 
     if args.restore_checkpoint or args.mode == "test":
         # restores the latest checkpoint using from the manager
-        checkpoint.restore(manager.latest_checkpoint)
+        checkpoint.restore(manager.latest_checkpoint).expect_partial()
 
     try:
         # Specify an invalid GPU device
