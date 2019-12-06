@@ -406,7 +406,9 @@ def train(generator, discriminator, dataset_iterator, manager):
             if iteration % args.num_gen_updates == 0:
                 d_loss = discriminator.loss_function(logits_real, logits_fake)
 
-        pbar.set_description(f" g_loss: {g_loss:1.3f}, d_loss: {d_loss:1.3f}")
+        pbar.set_description(
+            " g_loss: {:1.3f}, d_lsoss: {:1.3f}".format(g_loss, d_loss)
+        )
 
         optimizer = tf.keras.optimizers.Adam(
             learning_rate=args.learn_rate, beta_1=args.beta1
