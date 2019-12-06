@@ -390,13 +390,13 @@ def train(generator, discriminator, dataset_iterator, manager):
         with tf.GradientTape() as gtape, tf.GradientTape() as dtape:
             gen_output = generator(gen_input)
 
-            logits_fake = discriminator(gen_output)
-            logits_real = discriminator(batch)
+            real_output = discriminator(gen_output)
+            fake_output = discriminator(batch)
 
-            g_loss = generator.loss_function(logits_fake)
+            g_loss = generator.loss_function(real_output)
 
             if iteration % args.num_gen_updates == 0:
-                d_loss = discriminator.loss_function(logits_real, logits_fake)
+                d_loss = discriminator.loss_function(fake_output, real_output)
 
         pbar.set_description(
             " g_loss: {:1.3f}, d_lsoss: {:1.3f}".format(g_loss, d_loss)
@@ -406,11 +406,11 @@ def train(generator, discriminator, dataset_iterator, manager):
             learning_rate=args.learn_rate, beta_1=args.beta1
         )
 
-        g_gradients = tape.gradient(g_loss, generator.trainable_variables)
+        g_gradients = gtape.gradient(g_loss, generator.trainable_variables)
         optimizer.apply_gradients(zip(g_gradients, generator.trainable_variables))
 
         if iteration % args.num_gen_updates == 0:
-            d_gradients = tape.gradient(d_loss, discriminator.trainable_variables)
+            d_gradients = dtape.gradient(d_loss, discriminator.trainable_variables)
             optimizer.apply_gradients(
                 zip(d_gradients, discriminator.trainable_variables)
             )
