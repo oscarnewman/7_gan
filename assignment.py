@@ -178,19 +178,9 @@ class Generator_Model(tf.keras.Model):
 
         layers = [
             # Project and reshape (Input is bsz * z-dim)
-            Dense(4 * 4 * 1024, activation="relu"),
-            Reshape([4, 4, 1024]),
+            Dense(4 * 4 * 512, activation="relu"),
+            Reshape([4, 4, 512]),
             # First Deconv to 8x8x512, filters 4, stride 2
-            Conv2DTranspose(
-                512,
-                4,
-                2,
-                "SAME",
-                activation="relu",
-                kernel_initializer=tf.random_normal_initializer(stddev=0.02),
-            ),
-            BatchNormalization(),
-            # => 16x16x256
             Conv2DTranspose(
                 256,
                 4,
@@ -200,9 +190,19 @@ class Generator_Model(tf.keras.Model):
                 kernel_initializer=tf.random_normal_initializer(stddev=0.02),
             ),
             BatchNormalization(),
-            # => 32x32x128
+            # => 16x16x256
             Conv2DTranspose(
                 128,
+                4,
+                2,
+                "SAME",
+                activation="relu",
+                kernel_initializer=tf.random_normal_initializer(stddev=0.02),
+            ),
+            BatchNormalization(),
+            # => 32x32x128
+            Conv2DTranspose(
+                64,
                 4,
                 2,
                 "SAME",
@@ -262,7 +262,7 @@ class Discriminator_Model(tf.keras.Model):
         layers = [
             # Input is bszx64x64x3 => 32x32x128
             Conv2D(
-                128,
+                64,
                 4,
                 2,
                 "SAME",
@@ -271,7 +271,7 @@ class Discriminator_Model(tf.keras.Model):
             LeakyReLU(alpha=0.2),
             # => 16x16x256
             Conv2D(
-                256,
+                128,
                 4,
                 2,
                 "SAME",
@@ -281,7 +281,7 @@ class Discriminator_Model(tf.keras.Model):
             BatchNormalization(),
             # => 8x8x512
             Conv2D(
-                512,
+                256,
                 4,
                 2,
                 "SAME",
@@ -291,7 +291,7 @@ class Discriminator_Model(tf.keras.Model):
             BatchNormalization(),
             # => 4x4x1024
             Conv2D(
-                1024,
+                512,
                 4,
                 2,
                 "SAME",
@@ -299,17 +299,8 @@ class Discriminator_Model(tf.keras.Model):
             ),
             LeakyReLU(alpha=0.2),
             BatchNormalization(),
-            # Down to one pixel
-            Conv2D(
-                1,
-                4,
-                1,
-                "VALID",
-                kernel_initializer=tf.random_normal_initializer(stddev=0.02),
-            ),
-            LeakyReLU(alpha=0.2),
             Flatten(),
-            Activation("sigmoid"),
+            Dense(1, activation="sigmoid"),
         ]
 
         self.net = Sequential(layers)
