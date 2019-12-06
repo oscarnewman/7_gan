@@ -385,7 +385,7 @@ def train(generator, discriminator, dataset_iterator, manager):
     :return: The average FID score over the epoch
     """
 
-    pbar = dataset_iterator
+    pbar = tqdm(dataset_iterator)
     total_fid = 0
     total_fid_n = 0
 
@@ -402,15 +402,24 @@ def train(generator, discriminator, dataset_iterator, manager):
             logits_real = discriminator(batch)
 
             g_loss = generator.loss_function(logits_fake)
-            d_loss = discriminator.loss_function(logits_real, logits_fake)
 
-        print(f"Gen Loss: {g_loss:1.3f}, Dis Loss: {d_loss:1.3f}")
+            if iteration % args.num_gen_updates == 0:
+                d_loss = discriminator.loss_function(logits_real, logits_fake)
+
+        pbar.set_description(f" g_loss: {g_loss:1.3f}, d_loss: {d_loss:1.3f}")
 
         optimizer = tf.keras.optimizers.Adam(
             learning_rate=args.learn_rate, beta_1=args.beta1
         )
-        optimize(tape, generator, g_loss, optimizer)
-        optimize(tape, discriminator, d_loss, optimizer)
+
+        g_gradients = tape.gradient(g_loss, generator.trainable_variables)
+        optimizer.apply_gradients(zip(g_gradients, generator.trainable_variables))
+
+        if iteration % args.num_gen_updates == 0:
+            d_gradients = tape.gradient(d_loss, discriminator.trainable_variables)
+            optimizer.apply_gradients(
+                zip(d_gradients, discriminator.trainable_variables)
+            )
 
         # Save
         if iteration % args.save_every == 0:
