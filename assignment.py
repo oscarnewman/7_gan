@@ -219,6 +219,8 @@ class Generator_Model(tf.keras.Model):
             # Project and reshape (Input is bsz * z-dim)
             Dense(4 * 4 * 512, activation="relu", use_bias=False),
             Reshape([4, 4, 512]),
+            LeakyReLU(alpha=0.02),
+            BatchNormalization(),
             # First Deconv to 8x8x512, filters 4, stride 2
             *deconv_block(256),
             *deconv_block(128),
@@ -251,7 +253,7 @@ class Generator_Model(tf.keras.Model):
         """
         # TODO: Calculate the loss
         return tf.reduce_mean(
-            tf.keras.losses.BinaryCrossentropy(
+            tf.keras.losses.binary_crossentropy(
                 tf.ones_like(disc_fake_output), disc_fake_output
             )
         )
@@ -299,12 +301,12 @@ class Discriminator_Model(tf.keras.Model):
         """
         # TODO: Calculate the loss
         loss = tf.reduce_mean(
-            tf.keras.losses.BinaryCrossentropy(
+            tf.keras.losses.binary_crossentropy(
                 tf.zeros_like(disc_fake_output), disc_fake_output
             )
         )
         loss += tf.reduce_mean(
-            tf.keras.losses.BinaryCrossentropy(
+            tf.keras.losses.binary_crossentropy(
                 tf.ones_like(disc_real_output), disc_real_output
             )
         )
