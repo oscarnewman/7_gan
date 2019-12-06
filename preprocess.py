@@ -38,7 +38,7 @@ def load_image_batch(dir_name, batch_size=128, shuffle_buffer_size=250000, n_thr
         return image
 
     # List file names/file paths
-    dir_path = dir_name + '/*.jpg'
+    dir_path = dir_name + "/*.jpg"
     dataset = tf.data.Dataset.list_files(dir_path)
 
     # Shuffle order

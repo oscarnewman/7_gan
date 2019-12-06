@@ -377,7 +377,7 @@ def train(generator, discriminator, dataset_iterator, manager):
     :return: The average FID score over the epoch
     """
 
-    pbar = tqdm(dataset_iterator)
+    pbar = tqdm(dataset_iterator, total=tf.data.experimental.cardinality(dataset_iterator).numpy())
     total_fid = 0
     total_fid_n = 0
 
