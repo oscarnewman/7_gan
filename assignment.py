@@ -387,7 +387,7 @@ def train(generator, discriminator, dataset_iterator, manager):
 
         gen_input = gen_noise()
 
-        with tf.GradientTape(persistent=True) as tape:
+        with tf.GradientTape() as gtape, tf.GradientTape() as dtape:
             gen_output = generator(gen_input)
 
             logits_fake = discriminator(gen_output)
