@@ -1,0 +1,26 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+black = "*"
+pylint = "*"
+
+[packages]
+setuptools = "*"
+numpy = "*"
+tensorflow = "*"
+matplotlib = "*"
+ghast = "*"
+tqdm = "*"
+requests = "*"
+tensorflow-gan = "*"
+imageio = "*"
+tensorflow-hub = "*"
+
+[requires]
+python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true
